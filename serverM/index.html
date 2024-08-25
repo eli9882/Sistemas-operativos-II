@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Cliente de Mensajería</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      margin: 0;
+    }
+    #messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+      border: 1px solid #ddd;
+      background-color: #f9f9f9;
+    }
+    .message {
+      padding: 5px 10px;
+      margin-bottom: 10px;
+      border-radius: 5px;
+    }
+    .message.me {
+      background-color: #e1ffc7; /* Color de fondo para mensajes del usuario */
+      text-align: right;
+    }
+    .message.other {
+      background-color: #d0d0d0; /* Color de fondo para mensajes de otros */
+    }
+    input, button {
+      margin: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div id="messages"></div>
+  <input id="message" placeholder="Escribe un mensaje">
+  <button id="send">Enviar</button>
+
+  <script>
+    const sendButton = document.getElementById('send');
+    const messageInput = document.getElementById('message');
+    const messagesDiv = document.getElementById('messages');
+
+    // Conectar al servidor WebSocket
+    let ws = new WebSocket('ws://localhost:3002');
+
+    // Evento cuando se establece la conexión
+    ws.onopen = () => {
+      console.log('Conectado al servidor de mensajería');
+    };
+
+    // Evento cuando se recibe un mensaje del servidor
+    ws.onmessage = (event) => {
+      const messageDiv = document.createElement('div');
+      messageDiv.className = 'message other'; // Clase para mensajes de otros usuarios
+
+      // Verificar si el mensaje es un Blob y convertirlo a texto
+      if (event.data instanceof Blob) {
+        event.data.text().then(text => {
+          messageDiv.textContent = text;
+          messagesDiv.appendChild(messageDiv);
+        });
+      } else {
+        messageDiv.textContent = event.data; // Solo mostrar el mensaje si es texto
+        messagesDiv.appendChild(messageDiv);
+      }
+    };
+
+    // Evento cuando se cierra la conexión
+    ws.onclose = () => {
+      console.log('Desconectado del servidor');
+    };
+
+    // Evento para manejar los errores
+    ws.onerror = (error) => {
+      console.error('Error en la conexión WebSocket:', error);
+    };
+
+    // Enviar mensaje al servidor cuando el usuario hace clic en "Enviar"
+    sendButton.addEventListener('click', () => {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        const message = messageInput.value;
+        ws.send(message);
+        const userMessageDiv = document.createElement('div');
+        userMessageDiv.className = 'message me'; // Clase para mensajes del usuario
+        userMessageDiv.textContent = `Tú: ${message}`;
+        messagesDiv.appendChild(userMessageDiv);
+        messageInput.value = ''; // Limpiar el campo de entrada
+      }
+    });
+  </script>
+</body>
+</html>
